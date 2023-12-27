@@ -1,0 +1,11 @@
+﻿{
+  "Group": "Mesut",
+  "FriendlyName": "Zipcode rule for Netherlands",
+  "SystemName": "Mesut.DiscountManager",
+  "Version": "1.00",
+  "SupportedVersions": [ "4.50" ],
+  "Author": "Mesut",
+  "DisplayOrder": 1,
+  "FileName": "Nop.Plugin.Mesut.DiscountManager.dll",
+  "Description": "This plugin allows you to create discount requirements based on zip code in Netherlands"
+}

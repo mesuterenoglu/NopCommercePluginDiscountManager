@@ -1,0 +1,200 @@
+﻿@model ConfigurationModel
+@{
+    Layout = "";
+    var guid = Guid.NewGuid();
+}
+
+<script>
+    $(document).ready(function () {
+        $('#savediscountmanager@(Model.DiscountRequirementId)').click(function () {
+
+            var discountId = @Model.DiscountId;
+            var requirementId = @Model.DiscountRequirementId;
+
+            var postData = {
+                DiscountId: discountId,
+                DiscountRequirementId: requirementId,
+                ZipCodeRanges: []
+            };
+            addAntiForgeryToken(postData);
+
+            $("#@guid tbody tr").each(function () {
+                var minVal = $(this).find("input[name$='.MinValue']").val();
+                var maxVal = $(this).find("input[name$='.MaxValue']").val();
+                var idVal = $(this).find("input[name$='.Id']").val();
+
+                postData.ZipCodeRanges.push({
+                    Id: idVal,
+                    MinValue: minVal,
+                    MaxValue: maxVal
+                });
+            });
+
+            $.ajax({
+                cache: false,
+                type: "POST",
+                url: "@(Url.Action("Configure", "DiscountManager"))",
+                data: postData,
+                success: function (data, textStatus, jqXHR) {
+
+                    var $alertInfoEl = $("#savediscountmanagerAlert-info");
+                    let response = jqXHR.responseJSON;
+                    if (response instanceof Object && response.hasOwnProperty('Errors')) {
+                        var errorMessages = '';
+                        $.each(response.Errors, function (i, error) {
+                            errorMessages += error;
+                            if (response.Errors.length - 1 != i)
+                                errorMessages += '</br>';
+                        });
+                        $alertInfoEl.html(errorMessages);
+                        $("#savediscountmanagerAlert").click();
+
+                        return;
+                    }
+
+                    $('#pnl-save-requirement-result@(Model.DiscountRequirementId)').fadeIn("slow").delay(1000).fadeOut("slow");
+                    //notify parent if it's a new requirement
+                    @if (Model.DiscountRequirementId == 0)
+                    {
+                        <text>$("#discountRequirementContainer").trigger('nopnewdiscountruleadded', [data.NewRequirementId]); </text>
+                    }
+                    },
+                error: function (jqXHR, textStatus, errorThrown) {
+                    var $alertInfoEl = $("#savediscountmanagerAlert-info");
+
+                    // display default error
+                    $alertInfoEl.html('@T("Admin.Promotions.Discounts.Requirements.FailedToSave")');
+
+                    $("#savediscountmanagerAlert").click();
+                }
+            });
+        });
+
+
+        $("#addRow").click(function () {
+            
+            var rowCount = $('#@guid tbody tr').length;
+
+            var newRow =
+                `<tr>
+                    <td>
+                        <div class="col-md-9 requirement-data-col">
+                            <div class="requirement-data-input">
+                                <input type="number"
+                                    name="ZipCodeRanges[${rowCount}].MinValue"
+                                    class="form-control"/>
+                                <span asp-validation-for="ZipCodeRanges[${rowCount}].MinValue"></span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="col-md-9 requirement-data-col">
+                            <div class="requirement-data-input">
+                                <input type="number"
+                                    name="ZipCodeRanges[${rowCount}].MaxValue" .
+                                    class="form-control" />
+                                <span asp-validation-for="ZipCodeRanges[${rowCount}].MaxValue"></span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <button type="button"
+                                class="btn btn-danger btn-sm deleteRow"
+                                >Delete</button>
+                    </td>
+                </tr>`;
+
+            $("#@guid tbody").append(newRow);
+        });
+
+        // Delete row event
+        $("#@guid").on("click", ".deleteRow", function () {
+            $(this).closest('tr').remove();
+        });
+    });
+</script>
+
+<form asp-controller="DiscountManager" asp-action="Configure" method="post">
+    <div class="form-group row">
+        <input type="hidden" asp-for="DiscountId" />
+        <input type="hidden" asp-for="DiscountRequirementId" />
+    </div>
+
+    <div class="form-group row">
+        <div class="col-md-3">
+            <nop-label asp-for="ZipCodeRanges" />
+        </div>
+        <div class="col-md-9">
+            <table class="table" id="@guid">
+                <thead>
+                    <tr>
+                        <th>Min Zip Code</th>
+                        <th>Max Zip Code</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @for (int i = 0; i < Model.ZipCodeRanges.Length; i++)
+                    {
+                        <tr>
+                            <td>
+                                <div class="col-md-9 requirement-data-col">
+                                    <div class="requirement-data-input">
+                                        <input type="number"
+                                               name="ZipCodeRanges[i].MinValue"
+                                               class="form-control"
+                                               value="@Model.ZipCodeRanges[i].MinValue" />
+                                        <span asp-validation-for="ZipCodeRanges[i].MinValue"></span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="col-md-9 requirement-data-col">
+                                    <div class="requirement-data-input">
+                                        <input type="number"
+                                               name="ZipCodeRanges[i].MaxValue"
+                                               class="form-control"
+                                               value="@Model.ZipCodeRanges[i].MaxValue" />
+                                        <span asp-validation-for="ZipCodeRanges[i].MaxValue"></span>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                @if (Model.ZipCodeRanges.Length > 1)
+                                {
+                                    <input type="hidden"
+                                           name="ZipCodeRanges[@i].Id"
+                                           value="@Model.ZipCodeRanges[i].Id" />
+                                    <button type="button" id="deleteRow"
+                                            class="btn btn-danger btn-sm deleteRow">
+                                        Delete
+                                    </button>
+                                }
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+            <button type="button" id="addRow" class="btn btn-primary btn-sm">Add Row</button>
+        </div>
+    </div>
+
+    <div class="requirement-data-buttons">
+        <button type="button"
+                id="savediscountmanager@(Model.DiscountRequirementId)"
+                class="btn btn-primary">
+            @T("Admin.Common.Save")
+        </button>
+    </div>
+
+    <div class="form-group row">
+        <div class="offset-md-3 col-md-9 requirement-messages-col">
+            <div id="pnl-save-requirement-result@(Model.DiscountRequirementId)"
+                 style="display: none;"
+                 class="text-green margin-t-5">
+                @T("Admin.Promotions.Discounts.Requirements.Saved")
+            </div>
+        </div>
+    </div>
+    <nop-alert asp-alert-id="savediscountmanagerAlert" />
+</form>
